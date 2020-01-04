@@ -1,0 +1,3 @@
+#/bin/bash
+d=`dirname $0`
+python3 "${d}/../../git_hooks/update_version.py"
