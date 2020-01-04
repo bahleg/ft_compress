@@ -9,7 +9,7 @@ class DumbCompressor(Compressor):
         
         logging.debug('loading words')
         for w in ft_model.words:
-            if maxsize is not None and len(self.ngrams)>maxsize:
+            if maxsize is not None and len(self.ngrams)=>maxsize:
                 logging.warning('Too many ngrams, breaking')
                 break
             ngrams, ids = ft_model.get_subwords(w)
