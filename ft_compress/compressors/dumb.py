@@ -1,15 +1,19 @@
-from interfaces.compressor import Compressor
+from ft_compress.interfaces.compressor import Compressor
 import numpy as np
 import logging 
 
 class DumbCompressor(Compressor):
-    def __init__(self, ft_model, maxsize=None, dtype=np.float32):   
-        self.ngrams = {}    
+    DTYPE = np.float32
+    DTYPE_SIZE = 4
+    
+    def fit(self, ft_model, maxsize=None):
+        dtype = np.float32        
         self.dtype = dtype
-        
+        self.ngrams = {}
+        self.storage['config']['dim'] = ft_model.get_dimension()
         logging.debug('loading words')
         for w in ft_model.words:
-            if maxsize is not None and len(self.ngrams)=>maxsize:
+            if maxsize is not None and len(self.ngrams)>=maxsize:
                 logging.warning('Too many ngrams, breaking')
                 break
             ngrams, ids = ft_model.get_subwords(w)
@@ -18,22 +22,26 @@ class DumbCompressor(Compressor):
         logging.debug('filling matrix')        
         for new_id,n in enumerate(self.ngrams):
             old_id = self.ngrams[n]
-            self.ngrams[n] = self.vector_to_bytes(ft_model.get_input_vector(old_id))
+            self.storage['ngrams'][n] = self.vector_to_bytes(ft_model.get_input_vector(old_id))
         logging.debug('ready')
-        
-        self.byte_size = len(self.ngrams[n])                    
-          
-    @property
-    def config(self):
-        return {}
+        self.storage['info']['vec len'] = str(self.DTYPE_SIZE*len(ft_model.get_input_vector(old_id)))
+        self.storage['info']['ngram len'] = str(sum([len(n) for n in self.ngrams]))
+        self.storage['info']['ngram count'] = str(len(self.ngrams))
+        del self.ngrams
+    
+    def get_ngram_vector(self, ngram):
+        try:
+            return self.bytes_to_vec(self.storage['ngrams'][ngram])
+        except:
+            return None
         
     def info(self):
         size = 0
-        size += sum([len(n) for n in self.ngrams])
-        size+=self.byte_size*len(self.ngrams)
+        size = int(self.storage['info']['ngram len'])
+        size += int(self.storage['info']['ngram count'])*int(self.storage['info']['vec len'])
         size/=1024
         size/=1024
-        return 'Number of ngrams: {0}. Approximate size: {1} MB'.format(len(self.ngrams), size)
+        return 'Number of ngrams: {0}. Approximate size: {1} MB'.format(self.storage['info']['ngram count'], size)
     
         
     def vector_to_bytes(self, v):
@@ -41,3 +49,25 @@ class DumbCompressor(Compressor):
         
     def bytes_to_vec(self, b):
         return np.fromstring(b, self.dtype)
+
+if __name__=='__main__':
+    from ft_compress.storages.dict_based import DictStorage
+    import sys 
+    import logging
+    log_format = '[%(asctime)s] [%(levelname)s] - %(message)s'
+    logging.basicConfig(level=logging.DEBUG, format=log_format)
+    log = logging.getLogger(__name__)
+
+    # writing to stdout
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setLevel(logging.DEBUG)
+    handler.setFormatter(log_format)
+    log.addHandler(handler)
+    logging.debug('hello')
+    from fasttext import load_model
+    model = load_model('/home/legin/fasttext/wiki.en.bin')
+    d = DictStorage()
+    c = DumbCompressor(d)
+    c.fit(model, 200000)
+
+    

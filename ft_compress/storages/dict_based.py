@@ -1,4 +1,5 @@
 from ft_compress.interfaces.storage import Storage
+import json 
 
 class DictStorage(Storage):
     def __init__(self):
@@ -16,8 +17,17 @@ class DictStorage(Storage):
         return self._buckets[bucket]
     
     def __repr__(self):
-        return '\n'.join(['Bucket: {0}: {1}'.format(b, repr(self._buckets[b])) for b in self._buckets])
+        return '\n'.join(['Bucket: {0}: {1}...'.format(b, repr(list(self._buckets[b].items())[:10])) for b in self._buckets])
 
+    
+    def save(self, path):
+        with open(path, 'w') as out:
+            json.dump(self._buckets, out)
+            
+    def load(self, path):
+        with open(path) as inp:
+            self._buckets = json.load(inp)
+            
 if __name__=='__main__':
     d = DictStorage()
     print ('empty bucket:', d['test'])
@@ -32,4 +42,7 @@ if __name__=='__main__':
         print ('duplicate bucket creation checked')
     if not exc:
         raise ValueError('Could not raise value for duplicate!')
-    
+    d.save('test.json')
+    d = DictStorage()
+    d.load('test.json')
+    print (d)
