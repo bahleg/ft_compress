@@ -19,10 +19,13 @@ class DumbCompressor(Compressor):
             ngrams, ids = ft_model.get_subwords(w)
             for n,i in zip(ngrams, ids):
                 self.ngrams[n] = i
-        logging.debug('filling matrix')        
+        logging.debug('filling matrix')       
+        maxn = 0  
         for new_id,n in enumerate(self.ngrams):
             old_id = self.ngrams[n]
             self.storage['ngrams'][n] = self.vector_to_bytes(ft_model.get_input_vector(old_id))
+            maxn = max(maxn, len(n))
+        self.storage['config']['n'] = str(maxn)
         logging.debug('ready')
         self.storage['info']['vec len'] = str(self.DTYPE_SIZE*len(ft_model.get_input_vector(old_id)))
         self.storage['info']['ngram len'] = str(sum([len(n) for n in self.ngrams]))
