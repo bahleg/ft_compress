@@ -6,16 +6,17 @@ class DumbCompressor(Compressor):
     DTYPE = np.float32
     DTYPE_SIZE = 4
     
-    def fit(self, ft_model, maxsize=None):
+    def fit(self, ft_model, take_every=1):
         dtype = np.float32        
         self.dtype = dtype
         self.ngrams = {}
         self.storage['config']['dim'] = ft_model.get_dimension()
         logging.debug('loading words')
-        for w in ft_model.words:
-            if maxsize is not None and len(self.ngrams)>=maxsize:
-                logging.warning('Too many ngrams, breaking')
-                break
+
+            
+        for w_id, w in enumerate(ft_model.words):
+            if w_id%take_every != 0:
+                continue
             ngrams, ids = ft_model.get_subwords(w)
             for n,i in zip(ngrams, ids):
                 self.ngrams[n] = i
@@ -24,7 +25,8 @@ class DumbCompressor(Compressor):
         for new_id,n in enumerate(self.ngrams):
             old_id = self.ngrams[n]
             self.storage['ngrams'][n] = self.vector_to_bytes(ft_model.get_input_vector(old_id))
-            maxn = max(maxn, len(n))
+            if not (n.startswith('<') and n.endswith('>')): 
+                maxn = max(maxn, len(n))
         self.storage['config']['n'] = str(maxn)
         logging.debug('ready')
         self.storage['info']['vec len'] = str(self.DTYPE_SIZE*len(ft_model.get_input_vector(old_id)))
