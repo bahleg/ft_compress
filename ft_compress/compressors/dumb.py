@@ -7,9 +7,10 @@ class DumbCompressor(Compressor):
     DTYPE_SIZE = 4
     
     def fit(self, ft_model, take_every=1):
-        dtype = np.float32        
-        self.dtype = dtype
+        
+        
         self.ngrams = {}
+        self.word_ngrams = {}
         self.storage['config']['dim'] = ft_model.get_dimension()
         logging.debug('loading words')
 
@@ -19,14 +20,23 @@ class DumbCompressor(Compressor):
                 continue
             ngrams, ids = ft_model.get_subwords(w)
             for n,i in zip(ngrams, ids):
-                self.ngrams[n] = i
+                if n != w:
+                    self.ngrams[n] = i
+                else:
+                    self.word_ngrams[n] = i
         logging.debug('filling matrix')       
         maxn = 0  
         for new_id,n in enumerate(self.ngrams):
             old_id = self.ngrams[n]
+   
             self.storage['ngrams'][n] = self.vector_to_bytes(ft_model.get_input_vector(old_id))
             if not (n.startswith('<') and n.endswith('>')): 
                 maxn = max(maxn, len(n))
+        
+        for new_id,n in enumerate(self.word_ngrams):
+            old_id = self.word_ngrams[n]
+            self.storage['word_ngrams'][n] = self.vector_to_bytes(ft_model.get_input_vector(old_id))
+            
         self.storage['config']['n'] = str(maxn)
         logging.debug('ready')
         self.storage['info']['vec len'] = str(self.DTYPE_SIZE*len(ft_model.get_input_vector(old_id)))
@@ -34,10 +44,11 @@ class DumbCompressor(Compressor):
         self.storage['info']['ngram count'] = str(len(self.ngrams))
         del self.ngrams
     
-    def get_ngram_vector(self, ngram):
+    def get_ngram_vector(self, ngram, full_word=False):
+        bucket = 'ngrams' if not full_word else 'word_ngrams'
         try:
-            return self.bytes_to_vec(self.storage['ngrams'][ngram])
-        except:
+            return self.bytes_to_vec(self.storage[bucket][ngram])
+        except KeyError:
             return None
         
     def info(self):
@@ -50,10 +61,10 @@ class DumbCompressor(Compressor):
     
         
     def vector_to_bytes(self, v):
-        return v.astype(self.dtype).tostring() 
+        return v.astype(self.DTYPE).tostring() 
         
     def bytes_to_vec(self, b):
-        return np.fromstring(b, self.dtype)
+        return np.fromstring(b, self.DTYPE)
 
 if __name__=='__main__':
     from ft_compress.storages.dict_based import DictStorage

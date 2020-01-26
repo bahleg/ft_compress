@@ -47,7 +47,7 @@ class Compressor8bit(Compressor):
     def get_ngram_vector(self, ngram):
         try:
             return self.bytes_to_vec(self.storage['ngrams'][ngram])
-        except:
+        except KeyError: 
             return None
 
     def info(self):

@@ -2,12 +2,23 @@ import numpy as np
 import json
 import logging
 
+def hash_ft(string):
+    h = 2166136261
+    for i in range(string.size()):
+        h = h^ord(string[i])
+        h = h* 16777619
+    return h 
+
 class Compressor:    
         
     def __init__(self, storage):
         self.storage = storage
-        self.storage['config']['dim'] = '-1'
-        self.storage['config']['n'] = '-1'
+        try:
+            int(self.storage['config']['dim'])
+            int(self.storage['config']['n'])    
+        except:
+            self.storage['config']['dim'] = '-1'
+            self.storage['config']['n'] = '-1'
         
 
     def fit(self, ft_model, **kwargs):
@@ -17,21 +28,23 @@ class Compressor:
     def info(self):
         raise NotImplementedError()
         
-    def get_ngram_vector(self, ngram):
+    def get_ngram_vector(self, ngram, full_word_ngram=False):
         raise NotImplementedError()
         
     def get_word_vector(self, word, n=5, dim=300):
-        word_ = '<'+word.lower()+'>'
+        word_ = '<'+word+'>'
         ngrams = []
         for n_ in range(1, n):
             if n_>=len(word_):
                 break            
-            for subw_id in range(1, len(word_)-n_): #ignring start at '<' or '>'
+            for subw_id in range(0, len(word_)-n_+1): #ignring start at '<' or '>'
+                if n_ == 1 and subw_id in  [0, len(word_)-1]:
+                    continue
                 logging.debug('{0}:{1}:{2}'.format(subw_id, n_, word_[subw_id:subw_id +  n_]))
                 ngrams.append(word_[subw_id:subw_id +  n_])
-        if word_ not in ngrams:
-            ngrams.append(word_)        
-        ngrams = [self.get_ngram_vector(w) for w in ngrams]          
+        
+        ngrams = [self.get_ngram_vector(w, False) for w in ngrams]
+        ngrams.append(self.get_ngram_vector(word, True))         
         ngrams = [n for n in ngrams if n is not None]    
         if len(ngrams)==0:
             return np.zeros(dim)            
