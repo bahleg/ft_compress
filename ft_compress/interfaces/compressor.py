@@ -15,10 +15,12 @@ class Compressor:
         self.storage = storage
         try:
             int(self.storage['config']['dim'])
-            int(self.storage['config']['n'])    
+            int(self.storage['config']['minn'])    
+            int(self.storage['config']['maxn'])    
         except:
             self.storage['config']['dim'] = '-1'
-            self.storage['config']['n'] = '-1'
+            self.storage['config']['maxn'] = '-1'
+            self.storage['config']['minn'] = '-1'
         
 
     def fit(self, ft_model, **kwargs):
@@ -31,10 +33,10 @@ class Compressor:
     def get_ngram_vector(self, ngram, full_word_ngram=False):
         raise NotImplementedError()
         
-    def get_word_vector(self, word, n=5, dim=300):
+    def get_word_vector(self, word, minn=3, maxn=6, dim=300):
         word_ = '<'+word+'>'
         ngrams = []
-        for n_ in range(1, n):
+        for n_ in range(minn, maxn+1):
             if n_>=len(word_):
                 break            
             for subw_id in range(0, len(word_)-n_+1): #ignring start at '<' or '>'
@@ -51,4 +53,4 @@ class Compressor:
         return np.mean(ngrams,0)
     
     def __getitem__(self, word):
-        return self.get_word_vector(word, n = int(self.storage['config']['n']), dim = int(self.storage['config']['dim']) )
+        return self.get_word_vector(word, minn = int(self.storage['config']['minn']),  maxn = int(self.storage['config']['maxn']), dim = int(self.storage['config']['dim']) )

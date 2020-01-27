@@ -1,59 +1,66 @@
 from ft_compress.interfaces.compressor import Compressor
 import numpy as np
 import logging 
+import tqdm 
+INT_32 = 2**32 
+def hash_ft(string):
+    h = np.array(2166136261, np.uint32)
+    string = string.encode('utf-8')
+    for string_i in string: 
+        #print (':',np.int8(string_i))
+        string_i = np.uint32(np.int8(string_i))
+        
+        h = h^(string_i)
+        h = (h* 16777619) %INT_32
+        #print ('h', h)
+    return h 
+
 
 class DumbCompressor(Compressor):
     DTYPE = np.float32
     DTYPE_SIZE = 4
     
     def fit(self, ft_model, take_every=1):
-        
-        
-        self.ngrams = {}
-        self.word_ngrams = {}
+        bucket_size = ft_model.f.getArgs().bucket
+        self.storage['config']['minn'] = str(ft_model.f.getArgs().minn)  
+        self.storage['config']['maxn'] = str(ft_model.f.getArgs().maxn)  
+        cnt = 0
+        word_num = len(ft_model.words)
         self.storage['config']['dim'] = ft_model.get_dimension()
+        logging.debug('loading ngrams')
+        for i in  tqdm.tqdm(range(0, bucket_size, take_every), total=bucket_size//take_every):
+            self.storage['ngrams'][str(i)] = self.vector_to_bytes(ft_model.get_input_vector(i+word_num))
+            cnt+=1
         logging.debug('loading words')
-
-            
-        for w_id, w in enumerate(ft_model.words):
-            if w_id%take_every != 0:
-                continue
+        for w in tqdm.tqdm(ft_model.words):
             ngrams, ids = ft_model.get_subwords(w)
-            for n,i in zip(ngrams, ids):
-                if n != w:
-                    self.ngrams[n] = i
-                else:
-                    self.word_ngrams[n] = i
-        logging.debug('filling matrix')       
-        maxn = 0  
-        for new_id,n in enumerate(self.ngrams):
-            old_id = self.ngrams[n]
-   
-            self.storage['ngrams'][n] = self.vector_to_bytes(ft_model.get_input_vector(old_id))
-            if not (n.startswith('<') and n.endswith('>')): 
-                maxn = max(maxn, len(n))
+            for i,n  in zip(ids, ngrams):
+                if i<word_num and i%take_every == 0:
+                    self.storage['word_ngrams'][n] = self.vector_to_bytes(ft_model.get_input_vector(i))
+                    cnt+=1
         
-        for new_id,n in enumerate(self.word_ngrams):
-            old_id = self.word_ngrams[n]
-            self.storage['word_ngrams'][n] = self.vector_to_bytes(ft_model.get_input_vector(old_id))
-            
-        self.storage['config']['n'] = str(maxn)
+        
+
         logging.debug('ready')
-        self.storage['info']['vec len'] = str(self.DTYPE_SIZE*len(ft_model.get_input_vector(old_id)))
-        self.storage['info']['ngram len'] = str(sum([len(n) for n in self.ngrams]))
-        self.storage['info']['ngram count'] = str(len(self.ngrams))
-        del self.ngrams
+        self.storage['info']['vec len'] = str(self.DTYPE_SIZE*ft_model.get_dimension())        
+        self.storage['info']['ngram count'] = str(cnt)
+        self.storage['info']['bucket size'] = str(bucket_size)
+
     
     def get_ngram_vector(self, ngram, full_word=False):
-        bucket = 'ngrams' if not full_word else 'word_ngrams'
         try:
-            return self.bytes_to_vec(self.storage[bucket][ngram])
+            if full_word:
+                return self.bytes_to_vec(self.storage['word_ngrams'][ngram])
+            else:
+                h = hash_ft(ngram)
+                h = h % int(self.storage['info']['bucket size'])
+                h = str(h)
+                return self.bytes_to_vec(self.storage['ngrams'][h])
         except KeyError:
-            return None
+            return None 
         
     def info(self):
-        size = 0
-        size = int(self.storage['info']['ngram len'])
+        size = 0        
         size += int(self.storage['info']['ngram count'])*int(self.storage['info']['vec len'])
         size/=1024
         size/=1024
