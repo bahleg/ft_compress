@@ -42,7 +42,7 @@ class Compressor:
             for subw_id in range(0, len(word_)-n_+1): #ignring start at '<' or '>'
                 if n_ == 1 and subw_id in  [0, len(word_)-1]:
                     continue
-                logging.debug('{0}:{1}:{2}'.format(subw_id, n_, word_[subw_id:subw_id +  n_]))
+                #logging.debug('{0}:{1}:{2}'.format(subw_id, n_, word_[subw_id:subw_id +  n_]))
                 ngrams.append(word_[subw_id:subw_id +  n_])
         
         ngrams = [self.get_ngram_vector(w, False) for w in ngrams]
