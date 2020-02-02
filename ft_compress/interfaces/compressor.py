@@ -33,16 +33,17 @@ class Compressor:
     def get_ngram_vector(self, ngram, full_word_ngram=False):
         raise NotImplementedError()
         
-    def get_word_vector(self, word, minn=3, maxn=6, dim=300):
+    def get_word_vector(self, word, minn=3, maxn=6, dim=300, verbose=False):
         word_ = '<'+word+'>'
         ngrams = []
-        for n_ in range(minn, maxn+1):
-            if n_>=len(word_):
-                break            
+        for n_ in range(minn, maxn+1):            
             for subw_id in range(0, len(word_)-n_+1): #ignring start at '<' or '>'
+                if len(word_[subw_id:subw_id+n_])!=n_:
+                    break
                 if n_ == 1 and subw_id in  [0, len(word_)-1]:
                     continue
-                #logging.debug('{0}:{1}:{2}'.format(subw_id, n_, word_[subw_id:subw_id +  n_]))
+                if verbose:
+                    logging.debug('{0}:{1}:{2}'.format(subw_id, n_, word_[subw_id:subw_id +  n_]))
                 ngrams.append(word_[subw_id:subw_id +  n_])
         
         ngrams = [self.get_ngram_vector(w, False) for w in ngrams]

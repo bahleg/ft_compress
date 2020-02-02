@@ -20,7 +20,7 @@ class DumbCompressor(Compressor):
     DTYPE = np.float32
     DTYPE_SIZE = 4
     
-    def fit(self, ft_model, take_every=1):
+    def fit(self, ft_model, save_word_ngrams=True, take_every=1):
         bucket_size = ft_model.f.getArgs().bucket
         self.storage['config']['minn'] = str(ft_model.f.getArgs().minn)  
         self.storage['config']['maxn'] = str(ft_model.f.getArgs().maxn)  
@@ -31,14 +31,15 @@ class DumbCompressor(Compressor):
         for i in  tqdm.tqdm(range(0, bucket_size, take_every), total=bucket_size//take_every):
             self.storage['ngrams'][str(i)] = self.vector_to_bytes(ft_model.get_input_vector(i+word_num))
             cnt+=1
-        logging.debug('loading words')
-        for w in tqdm.tqdm(ft_model.words):
-            ngrams, ids = ft_model.get_subwords(w)
-            for i,n  in zip(ids, ngrams):
-                if i<word_num and i%take_every == 0:
-                    self.storage['word_ngrams'][n] = self.vector_to_bytes(ft_model.get_input_vector(i))
-                    cnt+=1
-        
+        if save_word_ngrams:
+            logging.debug('loading words')
+            for w in tqdm.tqdm(ft_model.words):
+                ngrams, ids = ft_model.get_subwords(w)
+                for i,n  in zip(ids, ngrams):
+                    if i<word_num and i%take_every == 0:
+                        self.storage['word_ngrams'][n] = self.vector_to_bytes(ft_model.get_input_vector(i))
+                        cnt+=1
+            
         
 
         logging.debug('ready')
