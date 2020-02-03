@@ -1,26 +1,23 @@
 from ft_compress.interfaces.compressor import Compressor
+from ft_compress.utils.ft_hash import ft_hash
 import numpy as np
 import logging 
 import tqdm 
-INT_32 = 2**32 
-def hash_ft(string):
-    h = np.array(2166136261, np.uint32)
-    string = string.encode('utf-8')
-    for string_i in string: 
-        #print (':',np.int8(string_i))
-        string_i = np.uint32(np.int8(string_i))
-        
-        h = h^(string_i)
-        h = (h* 16777619) %INT_32
-        #print ('h', h)
-    return h 
+
 
 
 class DumbCompressor(Compressor):
+    """
+    The most simple compressor that just saves all the words for the fastText model
+    """
     DTYPE = np.float32
     DTYPE_SIZE = 4
     
     def fit(self, ft_model, save_word_ngrams=True, take_every=1):
+        """
+        :param take_every: if >1, we will take only each nth ngram and word
+        :param save_word_ngrams: if False, we will not save ngram-words which are trained  distinctly as tokens
+        """
         bucket_size = ft_model.f.getArgs().bucket
         self.storage['config']['minn'] = str(ft_model.f.getArgs().minn)  
         self.storage['config']['maxn'] = str(ft_model.f.getArgs().maxn)  
@@ -53,7 +50,7 @@ class DumbCompressor(Compressor):
             if full_word:
                 return self.bytes_to_vec(self.storage['word_ngrams'][ngram])
             else:
-                h = hash_ft(ngram)
+                h = ft_hash(ngram)
                 h = h % int(self.storage['info']['bucket size'])
                 h = str(h)
                 return self.bytes_to_vec(self.storage['ngrams'][h])
@@ -73,25 +70,3 @@ class DumbCompressor(Compressor):
         
     def bytes_to_vec(self, b):
         return np.fromstring(b, self.DTYPE)
-
-if __name__=='__main__':
-    from ft_compress.storages.dict_based import DictStorage
-    import sys 
-    import logging
-    log_format = '[%(asctime)s] [%(levelname)s] - %(message)s'
-    logging.basicConfig(level=logging.DEBUG, format=log_format)
-    log = logging.getLogger(__name__)
-
-    # writing to stdout
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setLevel(logging.DEBUG)
-    handler.setFormatter(log_format)
-    log.addHandler(handler)
-    logging.debug('hello')
-    from fasttext import load_model
-    model = load_model('/home/legin/fasttext/wiki.en.bin')
-    d = DictStorage()
-    c = DumbCompressor(d)
-    c.fit(model, 200000)
-
-    

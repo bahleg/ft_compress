@@ -2,6 +2,11 @@ from ft_compress.interfaces.storage import Storage
 import json 
 
 class DictStorage(Storage):
+    """
+    Storage based on dictionary.
+    Note that save and loading functions are implemented
+    via json, so all the objects inside the storage must be json-serializable!
+    """
     def __init__(self):
         super(Storage, self).__init__()
         self._buckets = {}
@@ -20,7 +25,7 @@ class DictStorage(Storage):
         return '\n'.join(['Bucket: {0}: {1}...'.format(b, repr(list(self._buckets[b].items())[:10])) for b in self._buckets])
 
     
-    def save(self, path):
+    def save(self, path):        
         with open(path, 'w') as out:
             json.dump(self._buckets, out)
             

@@ -1,19 +1,12 @@
 from ft_compress.interfaces.storage import Storage
 import shelve 
 
-class BucketEmulator:
-    def __init__(self, db, prefix):
-        self.db = db 
-        self.prefix = prefix
-    
-    def __getitem__(self, key):
-        return self.db['{0}.{1}'.format(self.prefix, key)]
-    
-    def __setitem__(self, key, value):
-        self.db['{0}.{1}'.format(self.prefix, key)] = value 
-        
 
 class ShelveStorage(Storage):
+    """
+    Storage based on shelve - built-in python library for 
+    disk dict-like objects
+    """
     def __init__(self, filename, flag, **shelve_args):
         super(Storage, self).__init__()        
         self._db = shelve.open(filename, flag=flag, **shelve_args)
@@ -30,6 +23,20 @@ class ShelveStorage(Storage):
     
     def __repr__(self):
         return 'Shelve Storage'
+
+
+class BucketEmulator:
+    def __init__(self, db, prefix):
+        self.db = db 
+        self.prefix = prefix
+    
+    def __getitem__(self, key):
+        return self.db['{0}.{1}'.format(self.prefix, key)]
+    
+    def __setitem__(self, key, value):
+        self.db['{0}.{1}'.format(self.prefix, key)] = value 
+        
+
         
 
     
